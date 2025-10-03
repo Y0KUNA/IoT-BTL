@@ -6,7 +6,7 @@
 // ====== WiFi & MQTT ======
 const char* ssid = "realme Q3s";
 const char* password = "10580103";
-const char* mqtt_server = "192.168.209.161";
+const char* mqtt_server = "192.168.99.161";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -38,6 +38,22 @@ void setup_wifi() {
   Serial.println("\n✅ WiFi connected");
   Serial.print("📡 IP: ");
   Serial.println(WiFi.localIP());
+}
+
+// ====== Gửi trạng thái LED hiện tại ======
+void publishLedState() {
+  StaticJsonDocument<128> doc;
+  doc["led1"] = digitalRead(LED1) == HIGH ? "ON" : "OFF";
+  doc["led2"] = digitalRead(LED2) == HIGH ? "ON" : "OFF";
+  doc["led3"] = digitalRead(LED3) == HIGH ? "ON" : "OFF";
+
+  char buffer[128];
+  serializeJson(doc, buffer);
+
+  // Gửi trạng thái thực tế lên topic iot/led/state
+  client.publish("iot/led/state", buffer);
+  Serial.print("📤 LED state sent: ");
+  Serial.println(buffer);
 }
 
 // ====== MQTT Callback ======
@@ -77,6 +93,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
   Serial.printf("💡 LED => L1:%d L2:%d L3:%d\n",
                 digitalRead(LED1), digitalRead(LED2), digitalRead(LED3));
+
+  // ➡️ Sau khi điều khiển xong, publish trạng thái LED thực tế
+  publishLedState();
 }
 
 // ====== MQTT Reconnect ======
@@ -125,7 +144,7 @@ void loop() {
   char buffer[128];
   serializeJson(doc, buffer);
   client.publish("iot/sensor/data", buffer);
-  Serial.print("📤 Published: ");
+  Serial.print("📤 Published sensor: ");
   Serial.println(buffer);
 
   delay(2000);
